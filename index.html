@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
+<title>BIT Platform Audit — Algorithmic Bias on X and TikTok</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=REM:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --blue:#0000FF;--stone:#F7EFDE;--sea:#97D9E3;--sea-dk:#2BA8C5;
+  --pink:#F6A4B7;--pink-dk:#C8476A;--violet:#A59BEE;--yellow:#FDB633;
+  --purple:#9A1BBE;--green:#18A48C;--amber:#BA7517;
+  --grey:#5A5A5A;--lgrey:#E0DDD5;
+  /* GEO colours — warm cream, sage, mid-grey. Distinct from all political colours */
+  --geo-uk:#FEF3C7;--geo-uk-dk:#92660A;
+  --geo-int:#D1FAE5;--geo-int-dk:#065F46;
+  --geo-amb:#E5E7EB;--geo-amb-dk:#6B7280;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;background:#fff!important}
+body{font-family:'Outfit',sans-serif;color:#1a1a1a!important;background:#fff!important;font-size:18px;line-height:1.7}
+section,header{background:#fff}
+
+/* NAV */
+#topnav{position:sticky;top:0;z-index:100;background:#000;padding:0 32px;display:flex;align-items:center;height:46px;overflow-x:auto}
+#topnav a{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);text-decoration:none;padding:0 11px;height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+#topnav a:hover,#topnav a.active{color:#fff;border-bottom-color:var(--blue)}
+#topnav .sep{color:rgba(255,255,255,.2);padding:0 4px;font-size:14px}
+#progress{position:fixed;top:46px;left:0;height:3px;background:var(--blue);z-index:99;width:0;pointer-events:none;transition:width .08s}
+
+/* HEADER */
+.site-header{background:#fff;border-bottom:3px solid var(--blue);padding:36px 56px 28px}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:24px}
+.site-header h1{font-family:'REM',sans-serif;font-size:clamp(17px,2.2vw,28px);font-weight:900;letter-spacing:-.02em;line-height:1.12;text-transform:uppercase;max-width:740px}
+.wordmark{height:48px;width:auto;flex-shrink:0}
+.meta-row{display:flex;gap:20px;flex-wrap:wrap}
+.meta-item{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--grey)}
+.meta-item strong{color:#000;font-weight:600}
+
+/* SECTIONS */
+section{padding:56px 56px;border-bottom:1px solid var(--lgrey)}
+section:last-child{border-bottom:none}
+.bloc-header{background:var(--blue);color:#fff;padding:9px 16px;display:inline-block;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.section-title{font-family:'REM',sans-serif;font-size:clamp(22px,2.8vw,36px);font-weight:900;letter-spacing:-.03em;line-height:1.08;margin-bottom:24px}
+
+/* TOOLTIP — JS-driven floating div, applied via data-tip attribute */
+/* Elements with data-tip get cursor:help and a subtle indicator */
+.spec-tip{border-bottom:1px dotted var(--blue);cursor:help}
+.fn{color:var(--blue);font-size:11px;vertical-align:super;font-family:'REM',sans-serif;font-weight:700;cursor:help;margin-left:1px}
+/* #ttp injected by JS */
+
+/* EXHIBIT */
+.exhibit-wrap{margin:28px 0;padding:36px;background:var(--stone);width:100%}
+.exhibit-title{font-family:'REM',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:5px}
+.exhibit-sub{font-size:15px;color:var(--grey);margin-bottom:28px}
+.exhibit-factors{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:0;align-items:stretch}
+.factor-card{background:#fff;border:2px solid var(--lgrey);padding:22px 18px}
+.factor-card.highlight{border-top:3px solid var(--blue);border-color:var(--blue)}
+.factor-num{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--blue);margin-bottom:5px}
+.factor-name{font-family:'REM',sans-serif;font-size:16px;font-weight:900;margin-bottom:6px}
+.factor-desc{font-size:14px;color:var(--grey);line-height:1.55}
+.factor-arrow{font-size:24px;color:var(--lgrey);padding:0 12px;display:flex;align-items:center}
+.algo-tag{display:inline-block;background:var(--yellow);color:#000;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.1em;padding:2px 7px;font-weight:700;margin-bottom:6px;text-transform:uppercase}
+.exhibit-note{margin-top:18px;font-size:14px;color:var(--grey);padding:12px 16px;border-left:3px solid var(--blue);background:#fff;font-style:italic}
+
+/* STAT TILES */
+.tile{background:var(--stone);padding:22px 18px;position:relative;overflow:hidden}
+.tile-border{height:4px;position:absolute;top:0;left:0;right:0}
+.tile-context{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-top:6px}
+.tile-num{font-family:'REM',sans-serif;font-size:clamp(28px,3.5vw,44px);font-weight:900;line-height:1;margin:8px 0 6px;letter-spacing:-.03em}
+.tile-label{font-size:14px;color:var(--grey);line-height:1.45}
+
+/* FINDINGS */
+.findings-list{display:flex;flex-direction:column;gap:32px}
+.finding{border-left:4px solid var(--blue);padding-left:22px}
+.finding-num{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--blue);margin-bottom:4px}
+.finding-headline{font-family:'REM',sans-serif;font-size:18px;font-weight:900;margin-bottom:10px;line-height:1.28}
+.finding-body{font-size:15px;color:var(--grey);line-height:1.75}
+
+/* TOGGLES */
+.toggle-bar{display:inline-flex;border:1.5px solid var(--blue);margin-bottom:22px;overflow:hidden}
+.toggle-bar button{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:8px 16px;border:none;background:transparent;color:var(--blue);cursor:pointer;transition:all .15s}
+.toggle-bar button.active{background:var(--blue);color:#fff}
+.d-none{display:none!important}
+
+/* CHARTS */
+.charts-pair{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px}
+.chart-wrap{background:var(--stone);padding:20px}
+.chart-title{font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:2px}
+.chart-sub{font-size:13px;color:var(--grey);margin-bottom:4px}
+.chart-interp{font-size:13px;color:var(--grey);font-style:italic;margin-bottom:12px;line-height:1.4}
+.canvas-container{position:relative;height:220px}
+
+/* SPECTRUM GRAPH — half width on desktop */
+.spec-graph-wrap{max-width:55%;min-width:300px;margin-bottom:24px}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 16px;font-size:13px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.leg-swatch{width:13px;height:13px;border-radius:1px;flex-shrink:0}
+.leg-line{width:22px;height:3px;flex-shrink:0}
+.leg-dashed{width:22px;height:0;border-top:3px dashed currentColor;flex-shrink:0}
+
+/* SPECTRUM EXPLAINER — small right-aligned box */
+.spec-box{float:right;clear:right;background:var(--stone);border-left:3px solid var(--blue);padding:13px 16px;margin:0 0 20px 28px;font-size:13px;color:var(--grey);line-height:1.6;max-width:280px}
+.spec-box strong{color:#000}
+.spec-swatch{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:middle;margin:0 3px;border:1px solid rgba(0,0,0,.1)}
+.clearfix::after{content:'';display:table;clear:both}
+
+/* AVATAR TAGS */
+.avatar-tag{display:inline-block;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;margin-bottom:8px}
+.avatar-tag.lou{background:var(--sea);color:#000}
+.avatar-tag.robin{background:var(--pink);color:#000}
+
+/* DATA TABLES */
+.data-table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px}
+.data-table th{background:#000;color:#fff;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:7px 10px;text-align:right;font-weight:700}
+.data-table th:first-child{text-align:left}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--lgrey);text-align:right;color:var(--grey)}
+.data-table td:first-child{text-align:left;font-weight:600;color:#000;font-family:'REM',sans-serif;font-size:11px;letter-spacing:.05em}
+.data-table tr.divider td{border-top:2px solid var(--blue)}
+.data-table tr:hover td{background:rgba(247,239,222,.6)}
+.spec-pos{color:var(--pink-dk);font-weight:700;font-family:'REM',sans-serif}
+.spec-neg{color:var(--sea-dk);font-weight:700;font-family:'REM',sans-serif}
+.spec-neu{color:var(--grey);font-family:'REM',sans-serif}
+
+/* CALLOUTS */
+.callout{padding:16px 20px;margin:16px 0;font-size:15px;line-height:1.65}
+.callout.blue{border-left:4px solid var(--blue);background:rgba(0,0,255,.04)}
+.callout.green{border-left:4px solid var(--green);background:rgba(24,164,140,.06)}
+.callout.pink{border-left:4px solid var(--pink-dk);background:rgba(246,164,183,.12)}
+.callout.sea{border-left:4px solid var(--sea-dk);background:rgba(151,217,227,.12)}
+.callout.amber{border-left:4px solid var(--amber);background:rgba(186,117,23,.06)}
+.callout.stone{border-left:4px solid var(--lgrey);background:var(--stone)}
+.callout strong{color:#000;font-weight:600}
+.callout-title{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:5px;color:var(--grey)}
+
+/* PERSONA CARDS */
+.persona{padding:20px;border:2px solid var(--lgrey)}
+.persona.lou{border-top:5px solid var(--sea)}
+.persona.robin{border-top:5px solid var(--pink)}
+.persona-name{font-family:'REM',sans-serif;font-size:19px;font-weight:900;margin-bottom:2px}
+.persona-role{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--grey);margin-bottom:9px}
+.persona-desc{font-size:14px;color:var(--grey);line-height:1.6}
+
+/* VOLUME BARS — 3 segments */
+.vol-section{margin:20px 0 28px}
+.vol-platform-h{font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:12px;color:#000}
+.vol-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.vol-label{font-size:14px;width:54px;flex-shrink:0}
+.vol-track{flex:1;height:26px;display:flex;border-radius:1px;overflow:hidden;background:var(--lgrey)}
+.vol-seg{display:flex;align-items:center;padding-left:6px;transition:width .5s ease}
+.vol-seg span{font-family:'REM',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,.9);white-space:nowrap}
+.vol-total{font-family:'REM',sans-serif;font-size:24px;font-weight:900;width:44px;text-align:right;flex-shrink:0;line-height:1}
+.vol-note{font-size:13px;padding:5px 10px;border-left:2px solid;margin-top:4px;margin-left:66px}
+.vol-note.more{border-color:var(--pink-dk);color:var(--pink-dk)}
+.vol-note.less{border-color:var(--sea-dk);color:var(--sea-dk)}
+
+/* GEO LEGEND */
+.geo-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin:10px 0 14px}
+.geo-legend-item{display:flex;align-items:center;gap:5px}
+.geo-swatch{width:13px;height:13px;border-radius:1px;border:1px solid rgba(0,0,0,.08)}
+
+/* WORD CLOUD PILLS — sized by prevalence, coloured by geo */
+.wc-4grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.wc-platform-block{display:contents}
+.wc-cell{background:#fff;border:1px solid var(--lgrey);padding:14px}
+.wc-cell-head{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:6px 10px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.wc-cell-head.lw{background:var(--sea);color:#000}
+.wc-cell-head.rw{background:var(--pink);color:#000}
+.wc-pills{display:flex;flex-wrap:wrap;gap:5px;min-height:50px;align-items:flex-start}
+.wcp{border-radius:2px;font-weight:500;line-height:1.3;display:inline-block;border:1px solid transparent}
+.wcp.uk{background:var(--geo-uk);color:var(--geo-uk-dk);border-color:rgba(146,102,10,.2)}
+.wcp.intl{background:var(--geo-int);color:var(--geo-int-dk);border-color:rgba(6,95,70,.2)}
+.wcp.amb{background:var(--geo-amb);color:var(--geo-amb-dk);border-color:rgba(107,114,128,.2)}
+.wc-row-label{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--grey);grid-column:1/-1;margin:12px 0 4px;border-top:1px solid var(--lgrey);padding-top:10px}
+.wc-note{font-size:12px;color:var(--grey);font-style:italic;margin-top:6px;grid-column:1/-1}
+
+/* THREE CALLOUT GRID */
+.callout-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:24px}
+
+/* MISINFO */
+.mis-big{font-family:'REM',sans-serif;font-size:clamp(60px,8vw,96px);font-weight:900;color:var(--purple);line-height:1;letter-spacing:-.04em}
+.mis-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.mis-card{padding:16px;border:1px solid var(--lgrey);background:var(--stone)}
+.mis-card-title{font-family:'REM',sans-serif;font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;margin-bottom:12px}
+.mis-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--lgrey)}
+.mis-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.mis-cat{font-size:13px;color:var(--grey)}
+.mis-val{font-family:'REM',sans-serif;font-size:16px;font-weight:900}
+.mis-val.alert{color:#8b0000}
+.mis-val.warn{color:var(--amber)}
+.mis-pct{font-size:12px;color:var(--grey);margin-left:3px}
+
+/* EG EXAMPLES */
+.eg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.eg-card{padding:20px;background:var(--stone)}
+.eg-card.lw{border-top:4px solid var(--sea-dk)}
+.eg-card.rw{border-top:4px solid var(--pink-dk)}
+.eg-tag{display:inline-block;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;margin-bottom:9px;font-weight:700}
+.eg-tag.lw{background:var(--sea);color:#000}
+.eg-tag.rw{background:var(--pink);color:#000}
+.eg-quote{font-size:14px;font-style:italic;color:var(--grey);line-height:1.6;margin-bottom:9px;padding:10px 13px;background:#fff;border-left:2px solid var(--lgrey)}
+.eg-why{font-size:13px;color:var(--grey);line-height:1.55}
+.eg-flag{display:inline-block;margin-top:8px;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.08em;padding:3px 7px;border:1px solid var(--lgrey);color:var(--grey);text-transform:uppercase}
+
+/* RISK CARDS */
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.risk-card{padding:24px;background:var(--stone);border-top:4px solid var(--blue)}
+.risk-num{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--blue);margin-bottom:5px}
+.risk-title{font-family:'REM',sans-serif;font-size:16px;font-weight:900;margin-bottom:8px;line-height:1.2}
+.risk-body{font-size:14px;color:var(--grey);line-height:1.65}
+
+/* METHODOLOGY */
+.method-steps{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--lgrey);margin:22px 0}
+.method-step{padding:24px 20px;border-right:1px solid var(--lgrey)}
+.method-step:last-child{border-right:none}
+.step-num{font-family:'REM',sans-serif;font-size:34px;font-weight:900;color:var(--lgrey);margin-bottom:5px;line-height:1}
+.step-title{font-family:'REM',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
+.step-body{font-size:13px;color:var(--grey);line-height:1.6}
+.closing-note{background:var(--stone);padding:20px 24px;font-size:14px;color:var(--grey);line-height:1.75;margin-top:22px}
+
+/* APPENDIX */
+.appendix-wrap{background:var(--stone);padding:40px 56px}
+.appendix-section{margin-bottom:48px}
+.appendix-section:last-child{margin-bottom:0}
+.appendix-label{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;display:block}
+.appendix-title{font-family:'REM',sans-serif;font-size:20px;font-weight:900;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--lgrey)}
+
+/* CROSS PLATFORM TABLE */
+.cp-table{width:100%;border-collapse:collapse;font-size:14px}
+.cp-table td{padding:13px 15px;border-bottom:1px solid var(--lgrey);vertical-align:top;line-height:1.6;color:var(--grey)}
+.cp-table tr:nth-child(odd) td{background:rgba(0,0,0,.03)}
+.cp-table td.dim{background:var(--lgrey)!important;font-family:'REM',sans-serif;font-size:9px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;width:130px;color:#000;vertical-align:middle}
+.cp-table td.xc{border-right:1px solid var(--lgrey)}
+
+/* FOOTNOTES */
+.footnotes{padding:28px 56px;background:var(--stone);border-top:1px solid var(--lgrey)}
+.footnotes-title{font-family:'REM',sans-serif;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--grey);margin-bottom:10px;font-weight:700}
+.footnote{font-size:13px;color:var(--grey);line-height:1.65;margin-bottom:6px;padding-left:20px;text-indent:-20px}
+.footnote a{color:var(--grey)}
+
+/* UTILS */
+.sh3{font-family:'REM',sans-serif;font-size:12px;letter-spacing:.09em;text-transform:uppercase;margin:24px 0 12px;color:#000;font-weight:700}
+
+/* RESPONSIVE */
+@media(max-width:960px){
+  section,.appendix-wrap,.footnotes{padding-left:24px;padding-right:24px}
+  .site-header{padding-left:24px;padding-right:24px}
+  .charts-pair,.mis-cards,.risk-grid,.eg-grid,.wc-4grid,.callout-grid-3{grid-template-columns:1fr}
+  .method-steps{grid-template-columns:1fr 1fr}
+  .exhibit-factors{grid-template-columns:1fr}
+  .factor-arrow{display:none}
+  .spec-graph-wrap{max-width:100%}
+  .spec-box{float:none;max-width:100%;margin:0 0 20px 0}
+  .cp-table td.xc{border-right:none}
+  .header-top{flex-wrap:wrap}
+  .wordmark{height:36px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<nav id="topnav">
+  <a href="#s01">Introduction</a>
+  <a href="#s02">Key Findings</a>
+  <a href="#s03">Neutral Browsing</a>
+  <a href="#s04">Tilted Browsing</a>
+  <a href="#s05">Misinformation</a>
+  <a href="#s06">Risks</a>
+  <a href="#s07">Methodology</a>
+  <span class="sep">|</span>
+  <a href="#s08">Appendix ↓</a>
+</nav>
+<header class="site-header">
+  <div class="header-top">
+    <h1>Platform Audit: Preliminary Findings<br>Algorithmic Bias on X and TikTok</h1>
+    <img class="wordmark" src="data:image/jpeg;base64,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" alt="BIT — Behavioural Insights Team">
+  </div>
+  <div class="meta-row">
+    <div class="meta-item">Platforms <strong>X · TikTok</strong></div>
+    <div class="meta-item">Avatars <strong>Lou · Robin</strong></div>
+    <div class="meta-item">Sessions per avatar <strong>6 (3 neutral + 3 tilted)</strong></div>
+    <div class="meta-item">Total posts coded <strong>274</strong></div>
+    <div class="meta-item">Context <strong>UK local elections, May 2026</strong></div>
+  </div>
+</header>
+<!-- S01 INTRODUCTION -->
+<section id="s01">
+  <div class="bloc-header">01 — Introduction</div>
+  <h2 class="section-title">What we did and why it matters</h2>
+  <p style="font-size:16px;color:var(--grey);line-height:1.8;margin-bottom:16px">This study asks two questions about what UK users encounter when they open two of the most-used social media platforms. First: what political content is served before a user has given any indication of their political interests? Second: does political browsing behaviour change what the algorithm serves in return?</p>
+  <p style="font-size:16px;color:var(--grey);line-height:1.8;margin-bottom:24px">Fieldwork ran in the weeks before the UK local elections in May 2026 — a moment when platform behaviour around political content is most consequential. Two controlled avatars, Lou and Robin, browsed X and TikTok across six sessions each: three with no political signal and three following exclusively left- or right-leaning parties. In total, 274 political posts were manually coded for political classification, content type, geographic scope and information quality.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+    <div class="persona lou">
+      <div class="persona-name">Lou</div>
+      <div class="persona-role">Left-leaning avatar</div>
+      <div class="persona-desc">In tilted sessions, Lou followed Labour, the Green Party, the Liberal Democrats, SNP and Plaid Cymru — liking posts, watching videos to completion, and engaging with party accounts.</div>
+    </div>
+    <div class="persona robin">
+      <div class="persona-name">Robin</div>
+      <div class="persona-role">Right-leaning avatar</div>
+      <div class="persona-desc">In tilted sessions, Robin followed the Conservative Party and Reform UK — liking posts, watching videos to completion, and engaging with party accounts.</div>
+    </div>
+  </div>
+
+  <div class="exhibit-wrap">
+    <p class="exhibit-title">What determines what you see?</p>
+    <p class="exhibit-sub">Three factors shape the political content a user receives. We can only control one of them.</p>
+    <div class="exhibit-factors">
+      <div class="factor-card">
+        <div class="factor-num">Factor 1</div>
+        <div class="factor-name">Platform supply</div>
+        <div class="factor-desc">The content that exists on a platform in the first place. Many prominent left-wing UK politicians and organisations have migrated away from X since 2022 — X's UK user base fell by almost a third in the year to September 2024.<span class="fn" data-tip="FT analysis cited in Euronews, Nov 2024: X's UK user base fell by almost a third in the year to Sept 2024. The Guardian departed in Nov 2024 citing 'far-right conspiracy theories and racism'.">1</span> The content pool is not neutral before the algorithm touches it.</div>
+      </div>
+      <div class="factor-arrow">→</div>
+      <div class="factor-card">
+        <div class="factor-num">Factor 2</div>
+        <div class="factor-name">User signals</div>
+        <div class="factor-desc">What the user does — what they like, how long they watch, who they follow — teaches the recommendation system where to send them next. This is the factor we deliberately varied in this study.</div>
+      </div>
+      <div class="factor-arrow">→</div>
+      <div class="factor-card highlight">
+        <div class="algo-tag">The black box</div>
+        <div class="factor-num">Factor 3</div>
+        <div class="factor-name">Algorithmic recommendation</div>
+        <div class="factor-desc">The platform's own weighting and amplification logic. X open-sourced a version of its ranking code on GitHub in 2023 — the first major platform to do so. TikTok has released no equivalent documentation.</div>
+      </div>
+    </div>
+    <div class="exhibit-note">We controlled Factor 2. By observing what is served when Factor 2 is neutral, and then when it is strongly tilted, we can isolate the algorithm's own amplification effect from the choices users make.</div>
+  </div>
+</section>
+
+<!-- S02 KEY FINDINGS -->
+<section id="s02" style="padding-top:32px">
+  <div class="bloc-header">02 — Key Findings</div>
+  <h2 class="section-title">Key statistics</h2>
+
+  <!-- STAT TILES -->
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:40px">
+    <div style="background:var(--stone);position:relative;overflow:hidden">
+      <div style="height:4px;background:linear-gradient(to right,var(--pink-dk) 50%,var(--sea-dk) 50%)"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:20px 18px 14px">
+        <div style="border-right:1px solid var(--lgrey);padding-right:16px">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:3px">X · default lean</div>
+          <div style="font-family:'REM',sans-serif;font-size:40px;font-weight:900;color:var(--pink-dk);line-height:1;margin-bottom:5px">2.4:1</div>
+          <div style="font-size:14px;color:var(--grey)">right-wing to left-wing, no signal given</div>
+        </div>
+        <div style="padding-left:16px">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:3px">TikTok · default lean</div>
+          <div style="font-family:'REM',sans-serif;font-size:40px;font-weight:900;color:var(--sea-dk);line-height:1;margin-bottom:5px">1.8:1</div>
+          <div style="font-size:14px;color:var(--grey)">left-wing to right-wing, no signal given</div>
+        </div>
+      </div>
+      <div style="padding:0 18px 18px;font-size:14px;color:var(--grey);border-top:1px solid var(--lgrey);padding-top:11px">Before either avatar did anything — X served 22 right-wing vs 9 left-wing political posts; TikTok served 18 left-wing vs 10 right-wing.</div>
+    </div>
+    <div style="background:var(--stone);position:relative;overflow:hidden">
+      <div style="height:4px;background:linear-gradient(to bottom,var(--pink-dk) 50%,var(--sea-dk) 50%)"></div>
+      <div style="padding:20px 18px 14px">
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:10px">Volume asymmetry</div>
+        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--lgrey)">
+          <div style="font-size:12px;color:var(--grey);margin-bottom:2px">X tilted sessions</div>
+          <div style="font-family:'REM',sans-serif;font-size:32px;font-weight:900;color:var(--pink-dk);line-height:1">61%</div>
+          <div style="font-size:14px;color:var(--grey)">more posts to Robin vs Lou</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--grey);margin-bottom:2px">TikTok tilted sessions</div>
+          <div style="font-family:'REM',sans-serif;font-size:32px;font-weight:900;color:var(--sea-dk);line-height:1">28%</div>
+          <div style="font-size:14px;color:var(--grey)">more posts to Lou vs Robin</div>
+        </div>
+      </div>
+    </div>
+    <div class="tile">
+      <div class="tile-border" style="background:var(--yellow)"></div>
+      <div class="tile-context">All posts · all sessions</div>
+      <div class="tile-num">75%</div>
+      <div class="tile-label">Opinion, prediction or entertainment — cannot be fact-checked (206 of 274 posts)</div>
+    </div>
+  </div>
+
+  <!-- FIVE FINDINGS -->
+  <h3 class="sh3">Five key findings</h3>
+  <div class="findings-list">
+
+    <div class="finding">
+      <div class="finding-num">Finding 01</div>
+      <div class="finding-headline">Both platforms have a default political lean — and they point in opposite directions</div>
+      <div class="finding-body">X served right-wing political content at 2.4 times the rate of left-wing before any signal was given. TikTok did the opposite: 1.8 times left-wing over right-wing. These defaults were present from session one and strengthened throughout — suggesting structural bias, not random noise. Notably, TikTok leaned left in the UK despite showing a rightward lean in European<span class="fn" data-tip="Räsänen, I. et al. (2026). Algorithms and Democracy: How social media shapes young Europeans' worldviews. Sitra Studies 256. Commissioned from BIT and Bondata. 24 avatars on Instagram, TikTok and X in Finland, France and Romania. 1,719 posts coded.">2</span> and US<span class="fn" data-tip="Ibrahim, H. et al. (2026). Systematic partisan content skews in TikTok during the 2024 US elections. Nature. doi:10.1038/s41586-026-10447-1. Republican-conditioned accounts received ~11.5% more party-aligned content than Democratic-conditioned accounts.">3</span> studies, confirming that algorithmic outputs reflect the local content ecosystem rather than fixed platform-level rules.</div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-num">Finding 02</div>
+      <div class="finding-headline">The centre barely exists — but neutral, apolitical content does</div>
+      <div class="finding-body">Just 12 posts across the entire study — 4.4% of politically classified content — came from centrist voices. Neutral, apolitical content appeared regularly on both platforms: Reuters reporting, BBC news, factual political coverage without editorial framing. What was absent was content engaging with politics from a moderate standpoint. In the run-up to local elections, this near-absence of the moderate voice is a meaningful distortion of the civic conversation both platforms claim to host.</div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-num">Finding 03</div>
+      <div class="finding-headline">Political signals trigger rapid, extreme feed narrowing — faster than any newspaper</div>
+      <div class="finding-body">Lou's X feed contained zero right-wing political posts across two consecutive tilted sessions — 16 posts, all left-wing. Robin's TikTok feed hit 100% right-wing content in the very first tilted session (8 of 8 posts). That level of political narrowing — within a single 10-minute browsing session — has no equivalent in traditional media. Newspaper partisanship is declared, stable and chosen; algorithmic narrowing is undeclared, personalised, and self-reinforcing.</div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-num">Finding 04</div>
+      <div class="finding-headline">Each platform served more political content to avatars whose signals matched its own lean</div>
+      <div class="finding-body">Robin received 61% more political posts than Lou on X during tilted sessions (50 vs 31), despite equal browsing time. On TikTok the pattern reversed: Lou received 28% more than Robin (47 vs 34). Each platform served more political content to the avatar whose signals matched its default lean. The algorithm is not just sorting the same content differently — it is turning up the volume for users who are already going with the grain.</div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-num">Finding 05</div>
+      <div class="finding-headline">Almost all political content is unverifiable opinion — and misinformation appears only in politically active sessions</div>
+      <div class="finding-body">Three quarters of all political posts were opinion, prediction or entertainment — content that cannot be fact-checked, often indistinguishable in format from factual reporting. Only 17% were verifiable true facts. More significantly, all 12 confirmed misinformation posts appeared in tilted sessions only. The act of engaging with political content appears to increase exposure to false information — and none of those 12 posts were flagged or removed by either platform.</div>
+    </div>
+
+  </div>
+</section>
+<!-- S03 NEUTRAL BROWSING -->
+<section id="s03">
+  <div class="bloc-header">03 — Neutral Browsing</div>
+  <h2 class="section-title">What is the default?</h2>
+  <div class="callout blue" style="margin-bottom:20px">
+    <div class="callout-title">Key finding</div>
+    X served right-wing political content at 2.4 times the rate of left-wing across all neutral sessions. TikTok did the opposite: 1.8 times left-wing over right-wing. Both platforms show a structural directional bias before the user does anything.
+  </div>
+
+  <div class="spec-box">
+    <strong>About the <span class="spec-tip" data-tip="Spectrum score: (Right Wing − Left Wing) ÷ (Right Wing + Left Wing) × 100. +100 = all right-wing, −100 = all left-wing, 0 = equal split. Neutral, Centrist and Can't Classify posts excluded.">spectrum score</span></strong><br>
+    <strong>(RW − LW) / (RW + LW) × 100</strong><br><br>
+    <span class="spec-swatch" style="background:rgba(246,164,183,.4);border-color:#F6A4B7"></span>Pink background = right-leaning<br>
+    <span class="spec-swatch" style="background:rgba(151,217,227,.4);border-color:#97D9E3"></span>Blue background = left-leaning
+  </div>
+
+  <div class="clearfix">
+    <div class="toggle-bar">
+      <button class="active" onclick="showNeu('pooled',this)">Pooled (Lou + Robin)</button>
+      <button onclick="showNeu('individual',this)">Individual avatars</button>
+    </div>
+
+    <!-- POOLED -->
+    <div id="neu-pooled">
+      <div class="charts-pair">
+        <div class="chart-wrap">
+          <div class="chart-title">X — Neutral sessions (pooled)</div>
+          <div class="chart-interp">Both avatars combined. X's right-lean strengthens across each session, reaching 3.7:1 right-to-left by NP3.</div>
+          <div class="canvas-container"><canvas id="cXNPpool"></canvas></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-title">TikTok — Neutral sessions (pooled)</div>
+          <div class="chart-interp">Both avatars combined. TikTok's left-lean is consistent throughout all three neutral sessions.</div>
+          <div class="canvas-container"><canvas id="cTTNPpool"></canvas></div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="leg-swatch" style="background:var(--sea)"></div>Left Wing</div>
+        <div class="legend-item"><div class="leg-swatch" style="background:var(--pink)"></div>Right Wing</div>
+        <div class="legend-item"><div class="leg-swatch" style="background:var(--violet)"></div>Centrist</div>
+        <div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Neutral</div>
+        <div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Can't Classify</div>
+      </div>
+      <div class="spec-graph-wrap">
+        <div class="chart-wrap">
+          <div class="chart-title"><span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. Neutral, Centrist and CC excluded. +100 = fully right-wing, −100 = fully left-wing.">Spectrum score</span> — neutral sessions (pooled)</div>
+          <div class="legend" style="margin-bottom:6px">
+            <div class="legend-item"><div class="leg-line" style="background:#888880"></div>X</div>
+            <div class="legend-item"><div class="leg-dashed" style="color:#888880"></div>TikTok</div>
+          </div>
+          <div class="canvas-container" style="height:190px"><canvas id="cSpecNPpool"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INDIVIDUAL -->
+    <div id="neu-individual" class="d-none">
+      <div class="charts-pair">
+        <div>
+          <div class="avatar-tag lou">Lou</div>
+          <div class="chart-wrap">
+            <div class="chart-title">X — Lou · Neutral</div>
+            <div class="chart-interp">Drifts rightward NP2–NP3, despite Lou's later left-leaning tilt. X's default lean is apparent even here.</div>
+            <div class="canvas-container"><canvas id="cXNPLou"></canvas></div>
+          </div>
+        </div>
+        <div>
+          <div class="avatar-tag robin">Robin</div>
+          <div class="chart-wrap">
+            <div class="chart-title">X — Robin · Neutral</div>
+            <div class="chart-interp">Strongly right-leaning by NP2 and NP3, consistent with X's structural default.</div>
+            <div class="canvas-container"><canvas id="cXNPRob"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="charts-pair" style="margin-top:18px">
+        <div>
+          <div class="avatar-tag lou">Lou</div>
+          <div class="chart-wrap">
+            <div class="chart-title">TikTok — Lou · Neutral</div>
+            <div class="chart-interp">Small session counts (2–5 posts) — treat individual scores with caution.</div>
+            <div class="canvas-container"><canvas id="cTTNPLou"></canvas></div>
+          </div>
+        </div>
+        <div>
+          <div class="avatar-tag robin">Robin</div>
+          <div class="chart-wrap">
+            <div class="chart-title">TikTok — Robin · Neutral</div>
+            <div class="chart-interp">Left-leaning throughout. TikTok serves left-wing content even to a right-leaning avatar with no signal given.</div>
+            <div class="canvas-container"><canvas id="cTTNPRob"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="spec-graph-wrap" style="margin-top:22px">
+        <div class="chart-wrap">
+          <div class="chart-title"><span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. Neutral, Centrist and CC excluded.">Spectrum score</span> — neutral sessions (individual avatars)</div>
+          <div class="legend" style="margin-bottom:6px;font-size:12px">
+            <div class="legend-item"><div class="leg-line" style="background:var(--sea-dk)"></div>Lou — X</div>
+            <div class="legend-item"><div class="leg-line" style="background:var(--amber)"></div>Robin — X</div>
+            <div class="legend-item"><div class="leg-dashed" style="color:var(--sea-dk)"></div>Lou — TikTok</div>
+            <div class="legend-item"><div class="leg-dashed" style="color:var(--amber)"></div>Robin — TikTok</div>
+          </div>
+          <div class="canvas-container" style="height:210px"><canvas id="cSpecNPind"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEMES -->
+  <div class="sh3" style="margin-top:28px">Content themes — neutral sessions</div>
+  <div class="geo-legend">
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-uk)"></div>UK Domestic</div>
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-int)"></div>International</div>
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-amb)"></div>Ambiguous</div>
+  </div>
+  <div class="charts-pair">
+    <div>
+      <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:10px;color:var(--grey)">X — Neutral themes</div>
+      <div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">UK Domestic (35%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp uk" style="font-size:13px;padding:4px 9px">Party Politics (UK)</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Antisemitism / Community Safety</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Criminal Justice</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Media and Free Speech</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Local Elections</span>
+      </div></div>
+      <div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">International (18%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp intl" style="font-size:13px;padding:4px 9px">US Politics</span>
+        <span class="wcp intl" style="font-size:12px;padding:3px 8px">Russia-Ukraine War</span>
+      </div></div>
+      <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">Ambiguous (47%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp amb" style="font-size:13px;padding:4px 9px">State Visit / UK-US Relations</span>
+        <span class="wcp amb" style="font-size:12px;padding:3px 8px">Government Finance</span>
+      </div></div>
+    </div>
+    <div>
+      <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:10px;color:var(--grey)">TikTok — Neutral themes</div>
+      <div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">UK Domestic (47%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp uk" style="font-size:13px;padding:4px 9px">Government Finance</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Welfare and Social Policy</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Immigration and Asylum</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Media and Free Speech</span>
+      </div></div>
+      <div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">International (30%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp intl" style="font-size:13px;padding:4px 9px">Iran-US Conflict / Middle East</span>
+        <span class="wcp intl" style="font-size:12px;padding:3px 8px">US Politics</span>
+      </div></div>
+      <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px">Ambiguous (23%)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="wcp amb" style="font-size:13px;padding:4px 9px">State Visit / UK-US Relations</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+<!-- S04 TILTED BROWSING -->
+<section id="s04">
+  <div class="bloc-header">04 — Tilted Browsing</div>
+  <h2 class="section-title">What happens when a signal is given?</h2>
+  <div class="callout blue" style="margin-bottom:20px">
+    <div class="callout-title">Key finding</div>
+    Political signals trigger rapid and extreme feed narrowing. Lou's X feed contained zero right-wing political posts across two consecutive sessions. Robin's TikTok feed hit 100% right-wing in the very first tilted session. Each platform also served more political content to the avatar whose signals matched its default lean.
+  </div>
+  <p style="font-size:15px;color:var(--grey);line-height:1.7;margin-bottom:24px">During tilted sessions, Lou engaged with Labour, the Green Party, the Liberal Democrats, SNP and Plaid Cymru. Robin engaged with the Conservative Party and Reform UK. Both watched videos to completion, liked posts and followed party accounts.</p>
+
+  <!-- VOLUME BARS — 3 segments -->
+  <div class="sh3">Political posts received — tilted sessions</div>
+  <div class="charts-pair">
+    <div class="chart-wrap">
+      <div class="vol-platform-h">X</div>
+      <div class="vol-row">
+        <div class="vol-label" style="color:var(--sea-dk)">Lou</div>
+        <div class="vol-track">
+          <div style="width:62%;display:flex;gap:2px;height:100%">
+            <div class="vol-seg" style="width:29%;background:var(--sea-dk)"><span>T1: 9</span></div>
+            <div class="vol-seg" style="width:42%;background:#1d8fb0"><span>T2: 13</span></div>
+            <div class="vol-seg" style="width:29%;background:#4aadc8"><span>T3: 9</span></div>
+          </div>
+        </div>
+        <div class="vol-total" style="color:var(--sea-dk)">31</div>
+      </div>
+      <div class="vol-row" style="margin-top:8px">
+        <div class="vol-label" style="color:var(--pink-dk)">Robin</div>
+        <div class="vol-track">
+          <div style="width:100%;display:flex;gap:2px;height:100%">
+            <div class="vol-seg" style="width:36%;background:var(--pink-dk)"><span>T1: 18</span></div>
+            <div class="vol-seg" style="width:32%;background:#a8476a"><span>T2: 16</span></div>
+            <div class="vol-seg" style="width:32%;background:#c06080"><span>T3: 16</span></div>
+          </div>
+        </div>
+        <div class="vol-total" style="color:var(--pink-dk)">50</div>
+      </div>
+      <div class="vol-note more" style="margin-top:10px">Robin received <strong>61% more</strong> political posts than Lou</div>
+    </div>
+    <div class="chart-wrap">
+      <div class="vol-platform-h">TikTok</div>
+      <div class="vol-row">
+        <div class="vol-label" style="color:var(--sea-dk)">Lou</div>
+        <div class="vol-track">
+          <div style="width:100%;display:flex;gap:2px;height:100%">
+            <div class="vol-seg" style="width:38%;background:var(--sea-dk)"><span>T1: 18</span></div>
+            <div class="vol-seg" style="width:30%;background:#1d8fb0"><span>T2: 14</span></div>
+            <div class="vol-seg" style="width:32%;background:#4aadc8"><span>T3: 15</span></div>
+          </div>
+        </div>
+        <div class="vol-total" style="color:var(--sea-dk)">47</div>
+      </div>
+      <div class="vol-row" style="margin-top:8px">
+        <div class="vol-label" style="color:var(--pink-dk)">Robin</div>
+        <div class="vol-track">
+          <div style="width:72%;display:flex;gap:2px;height:100%">
+            <div class="vol-seg" style="width:35%;background:var(--pink-dk)"><span>T1: 12</span></div>
+            <div class="vol-seg" style="width:29%;background:#a8476a"><span>T2: 10</span></div>
+            <div class="vol-seg" style="width:35%;background:#c06080"><span>T3: 12</span></div>
+          </div>
+        </div>
+        <div class="vol-total" style="color:var(--pink-dk)">34</div>
+      </div>
+      <div class="vol-note less" style="margin-top:10px">Lou received <strong>28% more</strong> political posts than Robin</div>
+    </div>
+  </div>
+
+  <!-- CLASSIFICATION CHARTS (toggled) -->
+  <div class="toggle-bar">
+    <button class="active" onclick="showTilt('lou',this)">Lou (left-leaning)</button>
+    <button onclick="showTilt('robin',this)">Robin (right-leaning)</button>
+  </div>
+
+  <div id="tilt-lou">
+    <div class="charts-pair">
+      <div class="chart-wrap">
+        <div class="avatar-tag lou">Lou</div>
+        <div class="chart-title">X — Lou · Tilted sessions</div>
+        <div class="chart-interp">By T2, not a single right-wing post appeared. Lou's X feed reached complete left monoculture and held it.</div>
+        <div class="canvas-container"><canvas id="cXTLou"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="avatar-tag lou">Lou</div>
+        <div class="chart-title">TikTok — Lou · Tilted sessions</div>
+        <div class="chart-interp">Consistently left-leaning. TikTok's own default lean amplified Lou's signals from session one.</div>
+        <div class="canvas-container"><canvas id="cTTTLou"></canvas></div>
+      </div>
+    </div>
+    <div class="legend"><div class="legend-item"><div class="leg-swatch" style="background:var(--sea)"></div>Left Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--pink)"></div>Right Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--violet)"></div>Centrist</div><div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Neutral</div><div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Can't Classify</div></div>
+  </div>
+
+  <div id="tilt-robin" class="d-none">
+    <div class="charts-pair">
+      <div class="chart-wrap">
+        <div class="avatar-tag robin">Robin</div>
+        <div class="chart-title">X — Robin · Tilted sessions</div>
+        <div class="chart-interp">Surprisingly volatile — Robin's X feed even dipped left in T2. X's abundant right-wing content meant the algorithm oscillated rather than locked in.</div>
+        <div class="canvas-container"><canvas id="cXTRob"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="avatar-tag robin">Robin</div>
+        <div class="chart-title">TikTok — Robin · Tilted sessions</div>
+        <div class="chart-interp">Hit 100% right-wing immediately in T1, then retreated toward balance. The most extreme single session in the dataset.</div>
+        <div class="canvas-container"><canvas id="cTTTRob"></canvas></div>
+      </div>
+    </div>
+    <div class="legend"><div class="legend-item"><div class="leg-swatch" style="background:var(--sea)"></div>Left Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--pink)"></div>Right Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--violet)"></div>Centrist</div><div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Neutral</div><div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Can't Classify</div></div>
+  </div>
+
+  <!-- THEME PILLS — 2×2 always visible -->
+  <div class="sh3" style="margin-top:28px">What political content looked like — tilted sessions</div>
+  <div class="geo-legend">
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-uk)"></div>UK Domestic</div>
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-int)"></div>International</div>
+    <div class="geo-legend-item"><div class="geo-swatch" style="background:var(--geo-amb)"></div>Ambiguous</div>
+    <span style="font-size:13px;color:var(--grey);margin-left:8px">— pill size reflects relative prevalence</span>
+  </div>
+
+  <div class="wc-4grid">
+    <!-- X row label -->
+    <div class="wc-row-label" style="grid-column:1/-1;margin-top:0;border-top:none;padding-top:0">X — Tilted sessions</div>
+
+    <!-- X · Lou -->
+    <div class="wc-cell">
+      <div class="wc-cell-head lw"><span class="avatar-tag lou" style="margin-bottom:0">Lou</span> Left Wing content</div>
+      <div class="wc-pills">
+        <span class="wcp intl" style="font-size:16px;padding:6px 13px;font-weight:600">Iran-US Conflict / Middle East</span>
+        <span class="wcp intl" style="font-size:15px;padding:5px 12px;font-weight:600">US Politics</span>
+        <span class="wcp uk" style="font-size:14px;padding:5px 10px">Party Politics (UK)</span>
+        <span class="wcp amb" style="font-size:13px;padding:4px 9px">Media and Free Speech</span>
+        <span class="wcp amb" style="font-size:12px;padding:3px 8px">State Visit / UK-US Relations</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Criminal Justice</span>
+      </div>
+      <p style="font-size:12px;color:var(--grey);font-style:italic;margin-top:8px">Heavily international — US political dysfunction and Iran war coverage dominated Lou's X feed.</p>
+    </div>
+
+    <!-- X · Robin -->
+    <div class="wc-cell">
+      <div class="wc-cell-head rw"><span class="avatar-tag robin" style="margin-bottom:0">Robin</span> Right Wing content</div>
+      <div class="wc-pills">
+        <span class="wcp uk" style="font-size:16px;padding:6px 13px;font-weight:600">Party Politics (UK)</span>
+        <span class="wcp intl" style="font-size:15px;padding:5px 12px;font-weight:600">US Politics</span>
+        <span class="wcp uk" style="font-size:14px;padding:5px 10px">Antisemitism / Community Safety</span>
+        <span class="wcp uk" style="font-size:13px;padding:4px 9px">Government Finance</span>
+        <span class="wcp intl" style="font-size:12px;padding:3px 8px">Russia-Ukraine War</span>
+        <span class="wcp amb" style="font-size:12px;padding:3px 8px">Criminal Justice</span>
+      </div>
+      <p style="font-size:12px;color:var(--grey);font-style:italic;margin-top:8px">More UK domestic than Lou's X feed — anti-Labour and pro-Reform content, plus Golders Green attack coverage.</p>
+    </div>
+
+    <!-- TikTok row label -->
+    <div class="wc-row-label">TikTok — Tilted sessions</div>
+
+    <!-- TikTok · Lou -->
+    <div class="wc-cell">
+      <div class="wc-cell-head lw"><span class="avatar-tag lou" style="margin-bottom:0">Lou</span> Left Wing content</div>
+      <div class="wc-pills">
+        <span class="wcp uk" style="font-size:17px;padding:7px 15px;font-weight:700">Party Politics (UK)</span>
+        <span class="wcp uk" style="font-size:15px;padding:6px 12px;font-weight:600">Local and Council Elections</span>
+        <span class="wcp uk" style="font-size:14px;padding:5px 10px">Immigration and Asylum</span>
+        <span class="wcp uk" style="font-size:13px;padding:4px 9px">Scottish and Devolved Politics</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Government Finance</span>
+      </div>
+      <p style="font-size:12px;color:var(--grey);font-style:italic;margin-top:8px">Almost entirely UK domestic (89%). Driven by official Labour, LibDem, Green Party, SNP and Plaid Cymru accounts.</p>
+    </div>
+
+    <!-- TikTok · Robin -->
+    <div class="wc-cell">
+      <div class="wc-cell-head rw"><span class="avatar-tag robin" style="margin-bottom:0">Robin</span> Right Wing content</div>
+      <div class="wc-pills">
+        <span class="wcp uk" style="font-size:17px;padding:7px 15px;font-weight:700">Party Politics (UK)</span>
+        <span class="wcp uk" style="font-size:15px;padding:6px 12px;font-weight:600">Government Finance and Economy</span>
+        <span class="wcp uk" style="font-size:14px;padding:5px 10px">Immigration and Asylum</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Comedy and Satire</span>
+        <span class="wcp uk" style="font-size:12px;padding:3px 8px">Local Elections</span>
+      </div>
+      <p style="font-size:12px;color:var(--grey);font-style:italic;margin-top:8px">Overwhelmingly UK domestic (85%). Reform UK and Conservative Party official content prominent throughout.</p>
+    </div>
+  </div>
+
+  <!-- THREE CALLOUTS -->
+  <div class="callout-grid-3">
+    <div class="callout blue" style="margin:0">
+      <div class="callout-title">Geographic divide</div>
+      TikTok tilted content was <strong>87% UK domestic</strong> — party politics, local elections, immigration. X tilted was 40% international — US politics, Iran-US conflict, Russia-Ukraine. Users on each platform are having different political conversations about different worlds.
+    </div>
+
+    <div class="callout sea" style="margin:0">
+      <div class="callout-title">Lou locked in; Robin kept shifting</div>
+      Lou's X feed tightened progressively and held (−60, −100, −100). Robin's X feed was volatile — it even turned left in T2 despite consistent right-leaning signals. One hypothesis: X's abundant default right-wing content meant Robin's algorithm oscillated without needing to commit. Lou, signalling against X's grain, triggered an overcorrection that locked in hard.
+    </div>
+
+    <div class="callout amber" style="margin:0">
+      <div class="callout-title">Is this just newspapers on speed?</div>
+      UK partisan press is well-documented — studies show only 9% of Guardian readers voted Conservative in 2010 vs 70% of Telegraph readers,<span class="fn" data-tip="LSE Democratic Audit (2012). Wilks-Heeg, Blick & Crone. Only 9% of Guardian readers voted Conservative in 2010 vs 70% of Telegraph readers. The Sun's 1997 and 2010 switches demonstrably shifted reader partisanship (Ladd & Lenz, British Journal of Political Science, 2015).">4</span> and right-leaning titles reach more than twice as many daily readers as left-leaning ones.<span class="fn" data-tip="Press Gazette analysis: right-leaning UK national titles reach ~2.2M daily readers vs ~942K for left-leaning titles. In the UK, right-leaning X audiences have almost doubled since Musk's takeover while progressive audiences have halved (Reuters Institute Digital News Report 2025).">5</span> But three things distinguish algorithmic narrowing from press tribalism: newspaper bias is <em>declared</em> (you know The Sun backs the Conservatives), <em>chosen</em> (you buy it), and operates over years of subscription — not minutes. We observed complete political monoculture within a single 10-minute session. No reader has ever been politically sealed by one newspaper purchase.
+    </div>
+  </div>
+
+  <!-- SPECTRUM ARC -->
+  <div class="sh3" style="margin-top:32px">The narrowing arc — from neutral to tilted</div>
+
+  <div class="callout stone" style="margin-bottom:18px">
+    <div class="callout-title">How to read these charts</div>
+    Read each chart left to right. The first three data points (NP1–NP3) show what the platform served unprompted — the default. The dashed vertical line marks the first tilted session. Everything to the right shows what happened after political signals were given. The sharper the change at the dashed line, the more responsive the algorithm was to those signals — and the more the user's starting position was at the algorithm's discretion, not their own.
+  </div>
+
+  <div class="charts-pair">
+    <div class="chart-wrap">
+      <div class="chart-title">X — Full <span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. Dashed line marks the NP3 → T1 transition — first tilted session.">spectrum</span> arc</div>
+      <div class="chart-interp">X begins right-leaning, then splits dramatically at tilt — Lou's feed collapses left, pooled score recovers then settles negative.</div>
+      <div class="legend" style="margin-bottom:6px;font-size:12px">
+        <div class="legend-item"><div class="leg-line" style="background:#888880"></div>Pooled</div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--sea-dk)"></div>Lou</div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--amber)"></div>Robin</div>
+      </div>
+      <div class="canvas-container" style="height:240px"><canvas id="cArcX"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">TikTok — Full <span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. Dashed line marks the NP3 → T1 transition — first tilted session.">spectrum</span> arc</div>
+      <div class="chart-interp">TikTok stays left throughout neutral sessions. Robin's first tilted session hits +100 — the most extreme result in the dataset — then retreats.</div>
+      <div class="legend" style="margin-bottom:6px;font-size:12px">
+        <div class="legend-item"><div class="leg-dashed" style="color:#888880"></div>Pooled</div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--sea-dk)"></div>Lou</div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--amber)"></div>Robin</div>
+      </div>
+      <div class="canvas-container" style="height:240px"><canvas id="cArcTT"></canvas></div>
+    </div>
+  </div>
+</section>
+<!-- S05 MISINFORMATION -->
+<section id="s05">
+  <div class="bloc-header">05 — Misinformation</div>
+  <h2 class="section-title">What kind of political content is being served?</h2>
+  <div class="callout blue" style="margin-bottom:22px">
+    <div class="callout-title">Key finding</div>
+    Three quarters of all political posts are opinion, prediction or entertainment — cannot be fact-checked. All 12 confirmed misinformation posts appeared in tilted sessions only, and none were flagged or removed by either platform.
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:36px;align-items:start;margin-bottom:36px">
+    <div style="text-align:center">
+      <div class="mis-big">75%</div>
+      <div style="font-size:14px;color:var(--grey);margin-top:4px">opinion / unverifiable</div>
+      <div style="font-size:12px;color:var(--grey);margin-top:2px">206 of 274 posts</div>
+    </div>
+    <div style="width:200px;height:200px;position:relative">
+      <canvas id="cDonut"></canvas>
+    </div>
+    <div>
+      <div class="callout sea" style="margin-bottom:16px">
+        <div class="callout-title">The bigger picture</div>
+        The majority of problematic political content on social media does not take the form of outright falsehoods. It is the dominance of unverifiable, opinion-based content — often presented with the visual authority of news — that poses the greater structural risk to civic discourse. Three quarters of the political content in this audit falls into this category.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="padding:14px;background:rgba(24,164,140,.1);text-align:center">
+          <div style="font-family:'REM',sans-serif;font-size:26px;font-weight:900;color:var(--green)">17.2%</div>
+          <div style="font-size:13px;color:var(--grey)">True fact</div>
+          <div style="font-size:12px;color:var(--grey);margin-top:3px">47 posts</div>
+        </div>
+        <div style="padding:14px;background:rgba(253,182,51,.15);text-align:center">
+          <div style="font-family:'REM',sans-serif;font-size:26px;font-weight:900;color:var(--amber)">3.3%</div>
+          <div style="font-size:13px;color:var(--grey)">Misleading</div>
+          <div style="font-size:12px;color:var(--grey);margin-top:3px">9 posts</div>
+        </div>
+        <div style="padding:14px;background:rgba(154,27,190,.09);text-align:center">
+          <div style="font-family:'REM',sans-serif;font-size:26px;font-weight:900;color:var(--purple)">4.4%</div>
+          <div style="font-size:13px;color:var(--grey)">Confirmed misinfo</div>
+          <div style="font-size:12px;color:var(--grey);margin-top:3px">12 posts</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh3">Examples of confirmed misinformation served and not flagged</div>
+  <div class="eg-grid">
+    <div class="eg-card lw">
+      <div class="eg-tag lw">Left Wing · X · Tilted session</div>
+      <div class="eg-quote">A widely-shared post attributed a fabricated government policy — mass deportation of Israelis — and a fabricated quote to Italian Prime Minister Giorgia Meloni, framed in the context of the Gaza conflict. Presented as factual news, with no indication the policy or quote were invented.</div>
+      <div class="eg-why"><strong>Why it is misinformation:</strong> Meloni made no such statement and announced no such policy. Both fabricated. Coded: Confirmed misinfo — easily identified.</div>
+      <div class="eg-flag">Not flagged or removed by X at time of coding</div>
+    </div>
+    <div class="eg-card rw">
+      <div class="eg-tag rw">Right Wing · X · Tilted session</div>
+      <div class="eg-quote">A post claimed that the Home Secretary "openly says Islam dominates her every thought" and implied she was complicit in the Golders Green stabbing attack. Multiple specific factual claims in the post were false.</div>
+      <div class="eg-why"><strong>Why it is misinformation:</strong> The Home Secretary did explicitly name the attack as ideologically motivated. The characterisation was fabricated. Coded: Confirmed misinfo — required fact-checking.</div>
+      <div class="eg-flag">Not flagged or removed by X at time of coding</div>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--grey);text-align:center;font-style:italic;margin-top:6px">All 12 confirmed misinformation posts appeared in tilted sessions only. None were flagged, labelled or removed by either platform at time of coding.</p>
+</section>
+
+<!-- S06 RISKS -->
+<section id="s06">
+  <div class="bloc-header">06 — Risks</div>
+  <h2 class="section-title">What this means for democratic discourse</h2>
+  <div class="risk-grid">
+    <div class="risk-card"><div class="risk-num">Risk 01</div><div class="risk-title">Default content bias</div><div class="risk-body">Both platforms serve politically skewed content to users who have given no political signal. This is not user-driven — it reflects the composition of the content pool and the platform's own amplification logic. Users cannot opt out of a default they do not know exists.</div></div>
+    <div class="risk-card"><div class="risk-num">Risk 02</div><div class="risk-title">Rapid feed narrowing</div><div class="risk-body">Political signals produce extreme narrowing within a single session. The speed and completeness of this narrowing means that politically engaged users are rapidly placed in near-monoculture environments, with little exposure to opposing perspectives.</div></div>
+    <div class="risk-card"><div class="risk-num">Risk 03</div><div class="risk-title">Volume asymmetry</div><div class="risk-body">Each platform serves more political content to users whose signals align with its default lean. This compounds directional bias: not only is the content more partisan, there is more of it. Users going with the platform's grain receive a heavier political information diet overall.</div></div>
+    <div class="risk-card"><div class="risk-num">Risk 04</div><div class="risk-title">Misinformation without detection</div><div class="risk-body">Confirmed misinformation appeared exclusively in tilted sessions and was not flagged or removed. Political engagement signals appear to increase misinformation exposure. Platform moderation, as observed, does not prevent this.</div></div>
+    <div class="risk-card"><div class="risk-num">Risk 05</div><div class="risk-title">The opinion flood</div><div class="risk-body">Three quarters of all political content is unverifiable opinion presented with the visual authority of news. This is a structural feature of engagement-optimised platforms that reward emotional, partisan content over evidenced claims.</div></div>
+    <div class="risk-card"><div class="risk-num">Risk 06</div><div class="risk-title">Algorithmic unpredictability</div><div class="risk-body">Platforms did not respond consistently to user signals. Lou's TikTok neutral sessions produced <span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. +100 = all right-wing, −100 = all left-wing, 0 = equal split.">spectrum scores</span> of +100, −100 and −100 in successive sessions — extreme swings with no clear trigger. Users cannot understand or meaningfully control what they will be shown.</div></div>
+  </div>
+
+  <div class="callout green">
+    <div class="callout-title">Corroboration with prior research</div>
+    Prior BIT research conducted with the Finnish Innovation Fund Sitra across Finland, France and Romania (March 2026)<span class="fn" data-tip="R\u00e4s\u00e4nen, I. et al. (2026). Algorithms and Democracy: How social media shapes young Europeans\' worldviews. Sitra Studies 256. Commissioned from BIT and Bondata. 24 avatars on Instagram, TikTok and X in Finland, France and Romania. 1,719 posts coded.">2</span> found right-wing content accounted for 58% of all politically classified posts across all three platforms — consistent with what we find on X here. The prevalence of unverifiable opinion content (67% in the Sitra study, 75% here) and the pattern of algorithmic unpredictability are also consistent across both studies. A 2026 Nature study (Ibrahim et al.) similarly found TikTok systematically prioritised pro-Republican content across three US states during the 2024 election campaign.<span class="fn" data-tip="Ibrahim, H. et al. (2026). Systematic partisan content skews in TikTok during the 2024 US elections. Nature. doi:10.1038/s41586-026-10447-1. Republican-conditioned accounts received ~11.5% more party-aligned content than Democratic-conditioned accounts.">3</span><br><br>
+    <strong>The UK TikTok finding is a significant departure from both.</strong> Where TikTok showed a rightward lean in European<span class="fn" data-tip="R\u00e4s\u00e4nen et al. (2026), Sitra Studies 256.">2</span> and US<span class="fn" data-tip="Ibrahim et al. (2026), Nature.">3</span> contexts, it showed a clear left lean in the UK (1.8:1 left-to-right in neutral sessions). This context-dependency is itself a finding: TikTok’s algorithm amplifies the dominant political supply in its local content pool rather than applying a fixed weighting. In the UK, where major left-of-centre parties maintain substantial official presences on TikTok, that supply is left-leaning. Platform bias cannot be assumed to be fixed or universal — it must be assessed in specific national contexts.
+  </div>
+  <div class="callout blue" style="margin-top:0">
+    <div class="callout-title">These are structural risks</div>
+    The risks identified here sit in the recommendation architecture itself — not in individual bad actors or specific pieces of content. Addressing them requires platform-level transparency obligations, independent audit rights, and regulatory frameworks that treat algorithmic amplification as a systemic risk to civic discourse, not merely a content moderation problem.
+  </div>
+</section>
+
+<!-- S07 METHODOLOGY -->
+<section id="s07">
+  <div class="bloc-header">07 — Methodology</div>
+  <h2 class="section-title">How we did it</h2>
+  <div class="method-steps">
+    <div class="method-step"><div class="step-num">01</div><div class="step-title">Initial coding</div><div class="step-body">Two avatars — Lou (left-leaning signals) and Robin (right-leaning signals) — browsed X and TikTok across six 10-minute sessions each: three neutral and three tilted. Researchers manually coded every political post for political classification, content type, geographic scope and information quality.</div></div>
+    <div class="method-step"><div class="step-num">02</div><div class="step-title">AI reclassification</div><div class="step-body">Claude and Gemini independently reclassified posts where the initial coding was uncertain. AI suggestions were reviewed against the classification codebook and disagreements flagged for human review. AI suggestions did not override human coding automatically.</div></div>
+    <div class="method-step"><div class="step-num">03</div><div class="step-title">Human review</div><div class="step-body">A researcher reviewed all AI reclassifications and posts where the initial coder noted uncertainty. Manual overrides were applied with written justification. The Effective classification column reflects the final human-reviewed decision.</div></div>
+    <div class="method-step"><div class="step-num">04</div><div class="step-title">Final dataset</div><div class="step-body">274 political posts coded across both platforms, both avatars and all six sessions. Analysis uses the <span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. Neutral, Centrist and Can't Classify posts excluded from the directional calculation.">spectrum formula</span>, excluding Neutral, Centrist and Can't Classify posts.</div></div>
+  </div>
+  <div class="closing-note">
+    <strong>Caveats.</strong> This is a small-n study: 274 political posts across two avatars, two platforms, and six sessions each. Individual session <span class="spec-tip" data-tip="Spectrum score: (RW − LW) ÷ (RW + LW) × 100. +100 = all right-wing, −100 = all left-wing, 0 = equal split.">spectrum scores</span> — particularly in early neutral sessions where post counts are low (2–5 posts in some cells) — should be treated with caution. The avatars were created as English-language UK-based accounts; results may not generalise to other linguistic or geographic contexts. Fieldwork was conducted during the 2026 UK local election campaign and the content pool reflects that context. We did not code the full volume of content served (including sports, entertainment and lifestyle), only political posts encountered during each session.
+  </div>
+</section>
+<!-- APPENDIX -->
+<section id="s08" class="appendix-wrap">
+  <div style="font-family:'REM',sans-serif;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);margin-bottom:6px">Appendix — Additional data</div>
+  <h2 class="section-title" style="margin-bottom:4px">Supporting tables and charts</h2>
+  <p style="font-size:15px;color:var(--grey);margin-bottom:40px">Session-level data, cross-platform comparison, and full journey charts for researchers and practitioners.</p>
+
+  <!-- A1: SPECTRUM TABLES — NEUTRAL -->
+  <div class="appendix-section">
+    <div class="appendix-label">A.1 — Spectrum score tables · Neutral sessions</div>
+    <div class="appendix-title">Neutral browsing — session-level data</div>
+    <div class="charts-pair">
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">X — Pooled (Lou + Robin)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>2</td><td>1</td><td>0</td><td>6</td><td>0</td><td>9</td><td><span class="spec-neg">−33.3</span></td></tr>
+            <tr><td>NP2</td><td>4</td><td>10</td><td>0</td><td>3</td><td>1</td><td>18</td><td><span class="spec-pos">+42.9</span></td></tr>
+            <tr><td>NP3</td><td>3</td><td>11</td><td>0</td><td>14</td><td>0</td><td>28</td><td><span class="spec-pos">+57.1</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">TikTok — Pooled (Lou + Robin)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>3</td><td>1</td><td>0</td><td>4</td><td>1</td><td>9</td><td><span class="spec-neg">−50.0</span></td></tr>
+            <tr><td>NP2</td><td>4</td><td>2</td><td>3</td><td>1</td><td>4</td><td>14</td><td><span class="spec-neg">−33.3</span></td></tr>
+            <tr><td>NP3</td><td>11</td><td>7</td><td>1</td><td>10</td><td>5</td><td>34</td><td><span class="spec-neg">−22.2</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="charts-pair" style="margin-top:16px">
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">X — Lou (individual)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>2</td><td><span class="spec-neg">−100.0</span></td></tr>
+            <tr><td>NP2</td><td>4</td><td>6</td><td>0</td><td>2</td><td>0</td><td>12</td><td><span class="spec-pos">+20.0</span></td></tr>
+            <tr><td>NP3</td><td>2</td><td>4</td><td>0</td><td>4</td><td>0</td><td>10</td><td><span class="spec-pos">+33.3</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">X — Robin (individual)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>1</td><td>1</td><td>0</td><td>5</td><td>0</td><td>7</td><td><span class="spec-neu">0.0</span></td></tr>
+            <tr><td>NP2</td><td>0</td><td>4</td><td>0</td><td>1</td><td>1</td><td>6</td><td><span class="spec-pos">+100.0</span></td></tr>
+            <tr><td>NP3</td><td>1</td><td>7</td><td>0</td><td>10</td><td>0</td><td>18</td><td><span class="spec-pos">+75.0</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="charts-pair" style="margin-top:16px">
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">TikTok — Lou (individual)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>0</td><td>1</td><td>0</td><td>3</td><td>1</td><td>5</td><td><span class="spec-pos">+100.0</span></td></tr>
+            <tr><td>NP2</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td>2</td><td><span class="spec-neg">−100.0</span></td></tr>
+            <tr><td>NP3</td><td>2</td><td>0</td><td>0</td><td>2</td><td>1</td><td>5</td><td><span class="spec-neg">−100.0</span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12px;color:var(--grey);font-style:italic;margin-top:3px">2–5 posts per session — treat individual scores with caution.</p>
+      </div>
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">TikTok — Robin (individual)</div>
+        <table class="data-table">
+          <thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead>
+          <tbody>
+            <tr><td>NP1</td><td>3</td><td>0</td><td>0</td><td>1</td><td>0</td><td>4</td><td><span class="spec-neg">−100.0</span></td></tr>
+            <tr><td>NP2</td><td>3</td><td>2</td><td>3</td><td>1</td><td>3</td><td>12</td><td><span class="spec-neg">−20.0</span></td></tr>
+            <tr><td>NP3</td><td>9</td><td>7</td><td>1</td><td>8</td><td>4</td><td>29</td><td><span class="spec-neg">−12.5</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- A2: SPECTRUM TABLES — TILTED -->
+  <div class="appendix-section">
+    <div class="appendix-label">A.2 — Spectrum score tables · Tilted sessions</div>
+    <div class="appendix-title">Tilted browsing — session-level data</div>
+    <div class="charts-pair">
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">X — Lou</div>
+        <table class="data-table"><thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead><tbody>
+          <tr><td>T1</td><td>4</td><td>1</td><td>1</td><td>2</td><td>1</td><td>9</td><td><span class="spec-neg">−60.0</span></td></tr>
+          <tr><td>T2</td><td>8</td><td>0</td><td>0</td><td>5</td><td>0</td><td>13</td><td><span class="spec-neg">−100.0</span></td></tr>
+          <tr><td>T3</td><td>8</td><td>0</td><td>1</td><td>0</td><td>0</td><td>9</td><td><span class="spec-neg">−100.0</span></td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">X — Robin</div>
+        <table class="data-table"><thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead><tbody>
+          <tr><td>T1</td><td>4</td><td>11</td><td>0</td><td>2</td><td>1</td><td>18</td><td><span class="spec-pos">+46.7</span></td></tr>
+          <tr><td>T2</td><td>7</td><td>5</td><td>0</td><td>3</td><td>1</td><td>16</td><td><span class="spec-neg">−16.7</span></td></tr>
+          <tr><td>T3</td><td>6</td><td>7</td><td>0</td><td>3</td><td>0</td><td>16</td><td><span class="spec-pos">+7.7</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <div class="charts-pair" style="margin-top:16px">
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">TikTok — Lou</div>
+        <table class="data-table"><thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead><tbody>
+          <tr><td>T1</td><td>6</td><td>4</td><td>3</td><td>1</td><td>4</td><td>18</td><td><span class="spec-neg">−20.0</span></td></tr>
+          <tr><td>T2</td><td>7</td><td>1</td><td>3</td><td>2</td><td>1</td><td>14</td><td><span class="spec-neg">−75.0</span></td></tr>
+          <tr><td>T3</td><td>9</td><td>4</td><td>0</td><td>1</td><td>1</td><td>15</td><td><span class="spec-neg">−38.5</span></td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <div style="font-family:'REM',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px">TikTok — Robin</div>
+        <table class="data-table"><thead><tr><th>Session</th><th>LW</th><th>RW</th><th>CEN</th><th>NEU</th><th>CC</th><th>Total</th><th>Spectrum</th></tr></thead><tbody>
+          <tr><td>T1</td><td>0</td><td>8</td><td>0</td><td>4</td><td>0</td><td>12</td><td><span class="spec-pos">+100.0</span></td></tr>
+          <tr><td>T2</td><td>3</td><td>5</td><td>0</td><td>2</td><td>0</td><td>10</td><td><span class="spec-pos">+25.0</span></td></tr>
+          <tr><td>T3</td><td>5</td><td>3</td><td>0</td><td>3</td><td>1</td><td>12</td><td><span class="spec-neg">−25.0</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- A3: MISINFO BREAKDOWN -->
+  <div class="appendix-section">
+    <div class="appendix-label">A.3 — Misinformation breakdown</div>
+    <div class="appendix-title">Information quality by avatar and session type</div>
+    <div class="mis-cards">
+      <div class="mis-card"><div class="mis-card-title"><span class="avatar-tag lou" style="display:inline-block;margin-bottom:5px">Lou</span> X — Tilted (n=31)</div>
+        <div class="mis-row"><span class="mis-cat">Opinion / unverifiable</span><span><span class="mis-val">24</span><span class="mis-pct">77%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">True fact</span><span><span class="mis-val" style="color:var(--green)">3</span><span class="mis-pct">10%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Misleading</span><span><span class="mis-val warn">1</span><span class="mis-pct">3%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Confirmed misinfo</span><span><span class="mis-val alert">3</span><span class="mis-pct">10%</span></span></div>
+      </div>
+      <div class="mis-card"><div class="mis-card-title"><span class="avatar-tag robin" style="display:inline-block;margin-bottom:5px">Robin</span> X — Tilted (n=50)</div>
+        <div class="mis-row"><span class="mis-cat">Opinion / unverifiable</span><span><span class="mis-val">28</span><span class="mis-pct">56%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">True fact</span><span><span class="mis-val" style="color:var(--green)">15</span><span class="mis-pct">30%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Misleading</span><span><span class="mis-val warn">2</span><span class="mis-pct">4%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Confirmed misinfo</span><span><span class="mis-val alert">5</span><span class="mis-pct">10%</span></span></div>
+      </div>
+      <div class="mis-card"><div class="mis-card-title"><span class="avatar-tag lou" style="display:inline-block;margin-bottom:5px">Lou</span> TikTok — Tilted (n=47)</div>
+        <div class="mis-row"><span class="mis-cat">Opinion / unverifiable</span><span><span class="mis-val">39</span><span class="mis-pct">83%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">True fact</span><span><span class="mis-val" style="color:var(--green)">2</span><span class="mis-pct">4%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Misleading</span><span><span class="mis-val warn">4</span><span class="mis-pct">9%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Confirmed misinfo</span><span><span class="mis-val alert">2</span><span class="mis-pct">4%</span></span></div>
+      </div>
+      <div class="mis-card"><div class="mis-card-title"><span class="avatar-tag robin" style="display:inline-block;margin-bottom:5px">Robin</span> TikTok — Tilted (n=34)</div>
+        <div class="mis-row"><span class="mis-cat">Opinion / unverifiable</span><span><span class="mis-val">31</span><span class="mis-pct">91%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">True fact</span><span><span class="mis-val" style="color:var(--green)">2</span><span class="mis-pct">6%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Misleading</span><span><span class="mis-val warn">1</span><span class="mis-pct">3%</span></span></div>
+        <div class="mis-row"><span class="mis-cat">Confirmed misinfo</span><span><span class="mis-val">0</span><span class="mis-pct">0%</span></span></div>
+      </div>
+    </div>
+    <div class="charts-pair" style="margin-top:20px">
+      <div class="chart-wrap"><div class="chart-title">X — Information quality by phase</div><div class="canvas-container"><canvas id="cMisX"></canvas></div></div>
+      <div class="chart-wrap"><div class="chart-title">TikTok — Information quality by phase</div><div class="canvas-container"><canvas id="cMisTT"></canvas></div></div>
+    </div>
+    <div class="legend"><div class="legend-item"><div class="leg-swatch" style="background:var(--lgrey)"></div>Opinion / unverifiable</div><div class="legend-item"><div class="leg-swatch" style="background:var(--green)"></div>True fact</div><div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Misleading</div><div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Confirmed misinfo</div></div>
+  </div>
+
+  <!-- A4: CROSS PLATFORM -->
+  <div class="appendix-section">
+    <div class="appendix-label">A.4 — Cross-platform comparison</div>
+    <div class="appendix-title">X and TikTok side by side</div>
+    <div class="callout green" style="margin-bottom:16px">
+      <div class="callout-title">Convergence</div>
+      Both platforms show a consistent directional default lean without user signals. Both produce rapid extreme feed narrowing when signals are given. Both serve predominantly unverifiable opinion content. These patterns appear to reflect structural features of engagement-based recommendation systems.
+    </div>
+    <div class="callout blue" style="margin-bottom:20px">
+      <div class="callout-title">Divergence</div>
+      The direction of default lean is opposite. X is internationally oriented; TikTok is UK domestic. Volume asymmetry runs in mirror directions. Confirmed misinformation is notably more prevalent in X tilted sessions.
+    </div>
+    <table class="cp-table">
+      <tbody>
+        <tr><td class="dim">Default lean</td><td class="xc" style="color:#1a1a1a"><strong>Right-leaning.</strong> 2.4:1 right-to-left across neutral sessions. Pooled spectrum reaches +57.1 by NP3.</td><td style="color:#1a1a1a"><strong>Left-leaning.</strong> 1.8:1 left-to-right across neutral sessions. Pooled spectrum stays negative throughout (NP3: −22.2).</td></tr>
+        <tr><td class="dim">Neutral volume</td><td class="xc">55 political posts across 6 neutral sessions</td><td>57 political posts across 6 neutral sessions</td></tr>
+        <tr><td class="dim">Feed narrowing</td><td class="xc">Lou reaches −100 in T2 and T3. NP3→T1 shift: −93.3 points. Robin's X feed volatile.</td><td>Robin reaches +100 in T1 (most extreme in dataset). NP3→T1 shift: +112.5 points. Lou consistently left.</td></tr>
+        <tr><td class="dim">Volume asymmetry</td><td class="xc">Robin received 61% more political posts than Lou in tilted sessions (50 vs 31).</td><td>Lou received 28% more political posts than Robin in tilted sessions (47 vs 34).</td></tr>
+        <tr><td class="dim">Opinion / unverifiable</td><td class="xc">Neutral: 65% · Tilted: 64%</td><td>Neutral: 84% · Tilted: 86%</td></tr>
+        <tr><td class="dim">Confirmed misinfo</td><td class="xc">8 posts in tilted sessions (10% of tilted political content). Zero in neutral sessions.</td><td>2 posts in tilted sessions. 2 in Robin neutral. Lower overall rate.</td></tr>
+        <tr><td class="dim">Geographic focus (tilted)</td><td class="xc">40% international (Iran-US, US politics, Russia-Ukraine). 28% UK domestic.</td><td>87% UK domestic. Under 5% international.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- A5: FULL JOURNEY -->
+  <div class="appendix-section">
+    <div class="appendix-label">A.5 — Full journey charts</div>
+    <div class="appendix-title">All six sessions — neutral through tilted</div>
+    <div class="toggle-bar">
+      <button class="active" onclick="showJour('pooled',this)">Pooled (Lou + Robin)</button>
+      <button onclick="showJour('individual',this)">Individual avatars</button>
+    </div>
+    <div id="jour-pooled">
+      <div class="charts-pair">
+        <div class="chart-wrap"><div class="chart-title">X — Full journey (pooled)</div><div class="chart-sub">NP1–NP3 → T1–T3</div><div class="canvas-container"><canvas id="cJourXP"></canvas></div></div>
+        <div class="chart-wrap"><div class="chart-title">TikTok — Full journey (pooled)</div><div class="chart-sub">NP1–NP3 → T1–T3</div><div class="canvas-container"><canvas id="cJourTTP"></canvas></div></div>
+      </div>
+      <div class="legend"><div class="legend-item"><div class="leg-swatch" style="background:var(--sea)"></div>Left Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--pink)"></div>Right Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--violet)"></div>Centrist</div><div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Neutral</div><div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Can't Classify</div></div>
+      <div class="spec-graph-wrap" style="margin-top:16px">
+        <div class="chart-wrap">
+          <div class="chart-title">Full spectrum arc — pooled</div>
+          <div class="legend" style="margin-bottom:6px;font-size:12px"><div class="legend-item"><div class="leg-line" style="background:#888880"></div>X</div><div class="legend-item"><div class="leg-dashed" style="color:#888880"></div>TikTok</div></div>
+          <div class="canvas-container" style="height:200px"><canvas id="cJourSpecP"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div id="jour-individual" class="d-none">
+      <div class="charts-pair">
+        <div><div class="avatar-tag lou">Lou</div><div class="chart-wrap"><div class="chart-title">X — Lou · Full journey</div><div class="canvas-container"><canvas id="cJourXL"></canvas></div></div></div>
+        <div><div class="avatar-tag lou">Lou</div><div class="chart-wrap"><div class="chart-title">TikTok — Lou · Full journey</div><div class="canvas-container"><canvas id="cJourTTL"></canvas></div></div></div>
+      </div>
+      <div class="charts-pair" style="margin-top:16px">
+        <div><div class="avatar-tag robin">Robin</div><div class="chart-wrap"><div class="chart-title">X — Robin · Full journey</div><div class="canvas-container"><canvas id="cJourXR"></canvas></div></div></div>
+        <div><div class="avatar-tag robin">Robin</div><div class="chart-wrap"><div class="chart-title">TikTok — Robin · Full journey</div><div class="canvas-container"><canvas id="cJourTTR"></canvas></div></div></div>
+      </div>
+      <div class="legend" style="margin-top:10px"><div class="legend-item"><div class="leg-swatch" style="background:var(--sea)"></div>Left Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--pink)"></div>Right Wing</div><div class="legend-item"><div class="leg-swatch" style="background:var(--violet)"></div>Centrist</div><div class="legend-item"><div class="leg-swatch" style="background:var(--yellow)"></div>Neutral</div><div class="legend-item"><div class="leg-swatch" style="background:var(--purple)"></div>Can't Classify</div></div>
+      <div class="spec-graph-wrap" style="margin-top:16px">
+        <div class="chart-wrap">
+          <div class="chart-title">Full spectrum arc — individual avatars</div>
+          <div class="legend" style="margin-bottom:6px;font-size:12px"><div class="legend-item"><div class="leg-line" style="background:var(--sea-dk)"></div>Lou — X</div><div class="legend-item"><div class="leg-line" style="background:var(--amber)"></div>Robin — X</div><div class="legend-item"><div class="leg-dashed" style="color:var(--sea-dk)"></div>Lou — TikTok</div><div class="legend-item"><div class="leg-dashed" style="color:var(--amber)"></div>Robin — TikTok</div></div>
+          <div class="canvas-container" style="height:220px"><canvas id="cJourSpecI"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTNOTES -->
+<div class="footnotes">
+  <div class="footnotes-title">Notes and sources</div>
+  <div class="footnote"><sup>1</sup> Financial Times analysis cited in Euronews (21 November 2024): X's UK user base fell by almost a third in the year to September 2024. The Guardian departed X in November 2024, citing "far-right conspiracy theories and racism." Multiple left-of-centre politicians, public bodies and news organisations made similar announcements across 2023–2025. <a href="https://www.euronews.com/my-europe/2024/11/21/are-users-leaving-elon-musks-x-en-masse-and-where-are-they-heading" target="_blank">euronews.com</a></div>
+  <div class="footnote"><sup>2</sup> Räsänen, I. et al. (2026). <em>Algorithms and Democracy: How social media shapes young Europeans' worldviews.</em> Sitra Studies 256. Commissioned from The Behavioural Insights Team and Bondata. 24 avatars across Instagram, TikTok and X in Finland, France and Romania. 1,719 political posts coded. Right-wing content accounted for 58% of all politically classified posts. <a href="https://www.sitra.fi/wp-content/uploads/2026/03/Sitra-Algorithms-and-democracy.pdf.pdf" target="_blank">sitra.fi</a></div>
+  <div class="footnote"><sup>3</sup> Ibrahim, H. et al. (2026). "Systematic partisan content skews in TikTok during the 2024 US elections." <em>Nature</em>. DOI: 10.1038/s41586-026-10447-1. 323 audit experiments using dummy accounts in New York, Texas and Georgia. Republican-conditioned accounts received approximately 11.5% more party-aligned content than Democratic-conditioned accounts. <a href="https://www.nature.com/articles/d41586-026-01314-0" target="_blank">nature.com</a></div>
+  <div class="footnote"><sup>4</sup> Democratic Audit (2012). Wilks-Heeg, Blick and Crone. Only 9% of Guardian readers voted Conservative in 2010 vs 70% of Telegraph readers. The Sun's switches between Conservative and Labour support (1997 and 2010) demonstrably shifted reader partisanship — Ladd, J.M. and Lenz, G.S. (2009, 2015), British Journal of Political Science. <a href="https://blogs.lse.ac.uk/politicsandpolicy/the-political-affiliations-of-the-uks-national-newspapers" target="_blank">lse.ac.uk</a></div>
+  <div class="footnote"><sup>5</sup> Press Gazette analysis: right-leaning UK national titles reach approximately 2.2 million daily readers vs approximately 942,000 for left-leaning titles. Reuters Institute Digital News Report 2025: in the UK, right-leaning X audiences have almost doubled since Musk's takeover while progressive audiences have halved. <a href="https://pressgazette.co.uk/media-audience-and-business-data/media_metrics/uk-media-bias-2024/" target="_blank">pressgazette.co.uk</a> · <a href="https://reutersinstitute.politics.ox.ac.uk/digital-news-report/2025/dnr-executive-summary" target="_blank">reutersinstitute.politics.ox.ac.uk</a></div>
+</div>
+<script>
+// ── FLOATING TOOLTIP ───────────────────────────────────────────────────────
+const _ttp = document.createElement('div');
+Object.assign(_ttp.style,{position:'fixed',background:'#111',color:'#fff',
+  padding:'9px 13px',fontSize:'13px',lineHeight:'1.55',fontFamily:"'Outfit',sans-serif",
+  maxWidth:'280px',borderRadius:'3px',zIndex:'500',pointerEvents:'none',
+  opacity:'0',transition:'opacity .15s',display:'none',
+  boxShadow:'0 4px 14px rgba(0,0,0,.35)'});
+document.body.appendChild(_ttp);
+
+document.querySelectorAll('[data-tip]').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{
+    _ttp.textContent=el.getAttribute('data-tip');
+    _ttp.style.display='block';
+    requestAnimationFrame(()=>_ttp.style.opacity='1');
+  });
+  el.addEventListener('mousemove',e=>{
+    const tw=_ttp.offsetWidth, th=_ttp.offsetHeight;
+    let x=e.clientX-tw/2, y=e.clientY-th-14;
+    x=Math.max(8,Math.min(x,window.innerWidth-tw-8));
+    y=y<8?e.clientY+18:y;
+    _ttp.style.left=x+'px'; _ttp.style.top=y+'px';
+  });
+  el.addEventListener('mouseleave',()=>{
+    _ttp.style.opacity='0';
+    setTimeout(()=>{if(_ttp.style.opacity==='0')_ttp.style.display='none';},200);
+  });
+});
+
+// ── CHART GLOBALS ──────────────────────────────────────────────────────────
+Chart.defaults.font.family="'Outfit',sans-serif";
+Chart.defaults.plugins.legend.display=false;
+Chart.defaults.animation.duration=500;
+
+const C={sea:'#97D9E3',seaDk:'#2BA8C5',pink:'#F6A4B7',pinkDk:'#C8476A',
+  violet:'#A59BEE',yellow:'#FDB633',purple:'#9A1BBE',green:'#18A48C',
+  amber:'#BA7517',lgrey:'#E0DDD5',grey:'#888880'};
+
+const YIND=30, YPOOL=35;
+const L3=['NP1','NP2','NP3'], L3T=['T1','T2','T3'], L6=['NP1','NP2','NP3','T1','T2','T3'];
+
+// ── PLUGINS ────────────────────────────────────────────────────────────────
+Chart.register({id:'specBg',beforeDraw(chart){
+  if(!chart.config.options.specBg) return;
+  const {ctx,chartArea:{left,right,top,bottom},scales:{y}}=chart;
+  const mid=y.getPixelForValue(0);
+  ctx.save();
+  ctx.fillStyle='rgba(246,164,183,0.16)';ctx.fillRect(left,top,right-left,mid-top);
+  ctx.fillStyle='rgba(151,217,227,0.16)';ctx.fillRect(left,mid,right-left,bottom-mid);
+  ctx.restore();
+}});
+
+Chart.register({id:'transLine',afterDraw(chart){
+  if(!chart.config.options.showTransition) return;
+  const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+  const labs=chart.data.labels;
+  const i1=labs.indexOf('NP3'),i2=labs.indexOf('T1');
+  if(i1<0||i2<0) return;
+  const mid=(x.getPixelForValue(i1)+x.getPixelForValue(i2))/2;
+  ctx.save();
+  ctx.strokeStyle='rgba(0,0,255,0.32)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(mid,top);ctx.lineTo(mid,bottom);ctx.stroke();
+  ctx.fillStyle='rgba(0,0,255,0.5)';ctx.font="bold 8px 'REM'";
+  ctx.textAlign='center';ctx.fillText('TILT STARTS',mid,top+10);
+  ctx.restore();
+}});
+
+// ── FACTORIES ──────────────────────────────────────────────────────────────
+function stackedBar(id,labels,lw,rw,cen,neu,cc,maxY){
+  const el=document.getElementById(id);if(!el)return;
+  return new Chart(el,{type:'bar',data:{labels,datasets:[
+    {label:'Left Wing',data:lw,backgroundColor:C.sea,stack:'s'},
+    {label:'Right Wing',data:rw,backgroundColor:C.pink,stack:'s'},
+    {label:'Centrist',data:cen,backgroundColor:C.violet,stack:'s'},
+    {label:'Neutral',data:neu,backgroundColor:C.yellow,stack:'s'},
+    {label:"Can't Classify",data:cc,backgroundColor:C.purple,stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,grid:{display:false},ticks:{font:{family:"'REM'",size:10,weight:'700'}}},
+            y:{stacked:true,max:maxY,grid:{color:'rgba(0,0,0,0.05)'},ticks:{stepSize:5}}}}});
+}
+
+function specLine(id,labels,datasets,showTrans){
+  const el=document.getElementById(id);if(!el)return;
+  return new Chart(el,{type:'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,specBg:true,showTransition:!!showTrans,
+      scales:{x:{grid:{display:false},ticks:{font:{family:"'REM'",size:10,weight:'700'}}},
+              y:{min:-110,max:110,grid:{color:'rgba(0,0,0,0.05)'},
+                 ticks:{callback:v=>(v>0?'+':'')+v,stepSize:20}}},
+      plugins:{tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return (v>=0?'+':'')+v.toFixed(1)}}}}}});
+}
+
+function misoBar(id,labels,ou,tf,mis,cm){
+  const el=document.getElementById(id);if(!el)return;
+  new Chart(el,{type:'bar',data:{labels,datasets:[
+    {label:'Opinion',data:ou,backgroundColor:C.lgrey,stack:'s'},
+    {label:'True fact',data:tf,backgroundColor:C.green,stack:'s'},
+    {label:'Misleading',data:mis,backgroundColor:C.yellow,stack:'s'},
+    {label:'Confirmed',data:cm,backgroundColor:C.purple,stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:90,grid:{color:'rgba(0,0,0,0.05)'}}}}});
+}
+
+// ── S03 NEUTRAL ────────────────────────────────────────────────────────────
+stackedBar('cXNPpool',L3,[2,4,3],[1,10,11],[0,0,0],[6,3,14],[0,1,0],YPOOL);
+stackedBar('cTTNPpool',L3,[3,4,11],[1,2,7],[0,3,1],[4,1,10],[1,4,5],YPOOL);
+stackedBar('cXNPLou',L3,[1,4,2],[0,6,4],[0,0,0],[1,2,4],[0,0,0],YIND);
+stackedBar('cXNPRob',L3,[1,0,1],[1,4,7],[0,0,0],[5,1,10],[0,1,0],YIND);
+stackedBar('cTTNPLou',L3,[0,1,2],[1,0,0],[0,0,0],[3,0,2],[1,1,1],YIND);
+stackedBar('cTTNPRob',L3,[3,3,9],[0,2,7],[0,3,1],[1,1,8],[0,3,4],YIND);
+
+specLine('cSpecNPpool',L3,[
+  {label:'X',data:[-33.3,42.9,57.1],borderColor:C.grey,borderWidth:2.5,pointRadius:5,fill:false,tension:.3},
+  {label:'TikTok',data:[-50,-33.3,-22.2],borderColor:C.grey,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]}
+],false);
+
+specLine('cSpecNPind',L3,[
+  {label:'Lou X',data:[-100,20,33.3],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Robin X',data:[0,100,75],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Lou TikTok',data:[100,-100,-100],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]},
+  {label:'Robin TikTok',data:[-100,-20,-12.5],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]}
+],false);
+
+// ── S04 TILTED ─────────────────────────────────────────────────────────────
+stackedBar('cXTLou',L3T,[4,8,8],[1,0,0],[1,0,1],[2,5,0],[1,0,0],YIND);
+stackedBar('cTTTLou',L3T,[6,7,9],[4,1,4],[3,3,0],[1,2,1],[4,1,1],YIND);
+stackedBar('cXTRob',L3T,[4,7,6],[11,5,7],[0,0,0],[2,3,3],[1,1,0],YIND);
+stackedBar('cTTTRob',L3T,[0,3,5],[8,5,3],[0,0,0],[4,2,3],[0,0,1],YIND);
+
+specLine('cArcX',L6,[
+  {label:'Pooled',data:[-33.3,42.9,57.1,20,-50,-33.3],borderColor:C.grey,borderWidth:3,pointRadius:5,fill:false,tension:.3},
+  {label:'Lou',data:[-100,20,33.3,-60,-100,-100],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Robin',data:[0,100,75,46.7,-16.7,7.7],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3}
+],true);
+
+specLine('cArcTT',L6,[
+  {label:'Pooled',data:[-50,-33.3,-22.2,33.3,-25,-33.3],borderColor:C.grey,borderWidth:3,pointRadius:5,fill:false,tension:.3,borderDash:[6,4]},
+  {label:'Lou',data:[100,-100,-100,-20,-75,-38.5],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Robin',data:[-100,-20,-12.5,100,25,-25],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3}
+],true);
+
+// ── DONUT CHART ───────────────────────────────────────────────────────────────
+(()=>{
+  const el=document.getElementById('cDonut');if(!el)return;
+  new Chart(el,{type:'doughnut',
+    data:{labels:['Opinion / unverifiable','True fact','Misleading','Confirmed misinfo'],
+          datasets:[{data:[206,47,9,12],
+            backgroundColor:['#E0DDD5','#18A48C','#FDB633','#9A1BBE'],
+            hoverOffset:6,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{display:true,position:'bottom',
+        labels:{font:{family:"'Outfit'",size:11},padding:8,usePointStyle:true,
+          boxWidth:10,boxHeight:10}}}}});
+})();
+
+// ── APPENDIX MISINFO ───────────────────────────────────────────────────────
+misoBar('cMisX',['Neutral','Tilted'],[36,52],[18,18],[1,3],[0,8]);
+misoBar('cMisTT',['Neutral','Tilted'],[48,70],[7,4],[0,5],[2,2]);
+
+// ── APPENDIX FULL JOURNEY ──────────────────────────────────────────────────
+stackedBar('cJourXP',L6,[2,4,3,8,15,14],[1,10,11,12,5,7],[0,0,0,1,0,1],[6,3,14,4,8,3],[0,1,0,2,1,0],YPOOL);
+stackedBar('cJourTTP',L6,[3,4,11,6,10,14],[1,2,7,12,6,7],[0,3,1,3,3,0],[4,1,10,5,4,4],[1,4,5,4,1,2],YPOOL);
+stackedBar('cJourXL',L6,[1,4,2,4,8,8],[0,6,4,1,0,0],[0,0,0,1,0,1],[1,2,4,2,5,0],[0,0,0,1,0,0],YIND);
+stackedBar('cJourTTL',L6,[0,1,2,6,7,9],[1,0,0,4,1,4],[0,0,0,3,3,0],[3,0,2,1,2,1],[1,1,1,4,1,1],YIND);
+stackedBar('cJourXR',L6,[1,0,1,4,7,6],[1,4,7,11,5,7],[0,0,0,0,0,0],[5,1,10,2,3,3],[0,1,0,1,1,0],YIND);
+stackedBar('cJourTTR',L6,[3,3,9,0,3,5],[0,2,7,8,5,3],[0,3,1,0,0,0],[1,1,8,4,2,3],[0,3,4,0,0,1],YIND);
+
+specLine('cJourSpecP',L6,[
+  {label:'X',data:[-33.3,42.9,57.1,20,-50,-33.3],borderColor:C.grey,borderWidth:2.5,pointRadius:5,fill:false,tension:.3},
+  {label:'TikTok',data:[-50,-33.3,-22.2,33.3,-25,-33.3],borderColor:C.grey,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]}
+],true);
+
+specLine('cJourSpecI',L6,[
+  {label:'Lou X',data:[-100,20,33.3,-60,-100,-100],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Robin X',data:[0,100,75,46.7,-16.7,7.7],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3},
+  {label:'Lou TikTok',data:[100,-100,-100,-20,-75,-38.5],borderColor:C.seaDk,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]},
+  {label:'Robin TikTok',data:[-100,-20,-12.5,100,25,-25],borderColor:C.amber,borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[6,4]}
+],true);
+
+// ── TOGGLES ────────────────────────────────────────────────────────────────
+function showNeu(v,btn){
+  ['neu-pooled','neu-individual'].forEach(id=>{document.getElementById(id)?.classList.add('d-none')});
+  document.getElementById('neu-'+v)?.classList.remove('d-none');
+  btn.closest('.toggle-bar').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function showTilt(v,btn){
+  ['tilt-lou','tilt-robin'].forEach(id=>{document.getElementById(id)?.classList.add('d-none')});
+  document.getElementById('tilt-'+v)?.classList.remove('d-none');
+  btn.closest('.toggle-bar').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function showJour(v,btn){
+  ['jour-pooled','jour-individual'].forEach(id=>{document.getElementById(id)?.classList.add('d-none')});
+  document.getElementById('jour-'+v)?.classList.remove('d-none');
+  btn.closest('.toggle-bar').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  setTimeout(()=>Object.values(Chart.instances).forEach(c=>c.resize()),60);
+}
+
+// ── PROGRESS BAR ───────────────────────────────────────────────────────────
+window.addEventListener('scroll',()=>{
+  const d=document.documentElement;
+  const pct=d.scrollTop/(d.scrollHeight-d.clientHeight)*100;
+  document.getElementById('progress').style.width=pct+'%';
+});
+
+// ── NAV ACTIVE ─────────────────────────────────────────────────────────────
+const _obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      document.querySelectorAll('#topnav a').forEach(l=>l.classList.remove('active'));
+      const a=document.querySelector('#topnav a[href="#'+e.target.id+'"]');
+      if(a) a.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -70% 0px'});
+document.querySelectorAll('section[id]').forEach(s=>_obs.observe(s));
+
+</script>
+</body>
+</html>
